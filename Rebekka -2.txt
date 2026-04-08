@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Calendar</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#F0F4FF; --card:#FFFFFF; --border:#DDE3F4;
+    --text:#1A1D2E; --muted:#6B7280;
+    --today:#FFF3CD; --today-border:#F59E0B;
+    --accent:#4A90E2;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; text-transform:uppercase !important; letter-spacing:0.04em; }
+  body { font-family:'Nunito',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:20px; }
+  input, input::placeholder { text-transform:uppercase !important; letter-spacing:0.04em; }
+
+/* ── PAGES ── */
+.page { display:none; }
+.page.active { display:block; }
+
+/* ── TOP BAR ── */
+.topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
+.topbar-right { display:flex; gap:8px; align-items:center; }
+
+/* ── LANGUAGE SWITCHER ── */
+.lang-switcher { display:flex; gap:6px; align-items:center; }
+.lang-btn {
+display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:20px;
+border:2px solid #4B5563; background:#4B5563;
+font-family:‘Nunito’,sans-serif; font-size:.85rem; font-weight:800;
+cursor:pointer; transition:all .15s; color:#fff;
+}
+.lang-btn:hover { border-color:var(–accent); background:var(–accent); color:#fff; }
+.lang-btn.active { border-color:var(–accent); background:var(–accent); color:#fff; }
+.flag { width:22px; height:16px; border-radius:3px; overflow:hidden; flex-shrink:0; display:block; }
+
+/* ── SETTINGS GEAR BTN ── */
+.settings-btn {
+display:flex; align-items:center; gap:6px; padding:6px 14px; border-radius:20px;
+border:2px solid #4B5563; background:#4B5563;
+font-family:‘Nunito’,sans-serif; font-size:.85rem; font-weight:800;
+cursor:pointer; transition:all .15s; color:#fff;
+}
+.settings-btn:hover { border-color:var(–accent); background:var(–accent); color:#fff; }
+.settings-btn.active { border-color:var(–accent); background:var(–accent); color:#fff; }
+
+/* ── HEADER / NAV ── */
+.header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
+.nav-btn {
+background:#1A1D2E; border:2px solid #1A1D2E; border-radius:12px;
+padding:10px 20px; font-family:‘Nunito’,sans-serif; font-size:1rem; font-weight:800;
+cursor:pointer; color:#fff; transition:all .15s;
+}
+.nav-btn:hover { background:var(–accent); color:#fff; border-color:var(–accent); }
+.month-label { font-size:1.4rem; font-weight:900; min-width:200px; text-align:center; }
+
+/* ── LEGEND ── */
+.legend { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+.legend-item {
+display:flex; align-items:center; gap:7px; background:var(–card);
+border:2px solid var(–border); border-radius:20px; padding:6px 14px;
+font-weight:700; font-size:.9rem; cursor:pointer; transition:all .15s;
+}
+.legend-item:hover { transform:scale(1.04); }
+.legend-item.inactive { opacity:.35; }
+.legend-dot { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+
+/* ── WEEKDAYS / GRID ── */
+.weekdays { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px; }
+.weekday { text-align:center; font-weight:900; font-size:.85rem; color:var(–muted); padding:4px; }
+.grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.day { background:var(–card); border:2px solid var(–border); border-radius:14px; min-height:120px; padding:8px; transition:box-shadow .15s; cursor:pointer; }
+.day:hover { box-shadow:0 4px 16px rgba(0,0,0,.1); }
+.day.today { background:var(–today); border-color:var(–today-border); box-shadow:0 0 0 3px rgba(245,158,11,.25); }
+.day.empty { background:transparent; border-color:transparent; cursor:default; }
+.day-num { font-size:1.05rem; font-weight:900; color:var(–text); margin-bottom:6px; display:flex; align-items:center; gap:4px; }
+.today-badge { background:var(–today-border); color:#fff; border-radius:20px; font-size:.65rem; padding:1px 7px; font-weight:800; }
+.day.empty .day-num { display:none; }
+
+/* ── EVENTS ── */
+.events { display:flex; flex-direction:column; gap:4px; }
+.event { display:flex; align-items:center; gap:5px; border-radius:8px; padding:4px 6px; font-size:.78rem; font-weight:700; cursor:pointer; transition:transform .1s,box-shadow .1s; border:1.5px solid rgba(0,0,0,.08); position:relative; overflow:hidden; }
+.event:hover { transform:scale(1.03); box-shadow:0 2px 8px rgba(0,0,0,.12); }
+.event .picto { font-size:1.1rem; flex-shrink:0; line-height:1; position:relative; z-index:1; }
+.event .label { line-height:1.2; overflow:hidden; position:relative; z-index:1; }
+.event .time { font-size:.68rem; opacity:.75; }
+.event-dots { display:flex; flex-direction:column; gap:2px; flex-shrink:0; position:relative; z-index:1; }
+.event-dot { width:7px; height:7px; border-radius:50%; }
+
+/* ── OVERLAYS / MODALS ── */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:100; align-items:center; justify-content:center; }
+.overlay.open { display:flex; }
+.modal { background:#fff; border-radius:20px; padding:28px; max-width:420px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,.2); max-height:90vh; overflow-y:auto; }
+.modal h2 { font-size:1.4rem; font-weight:900; margin-bottom:4px; }
+.modal .modal-date { color:var(–muted); font-weight:600; margin-bottom:18px; font-size:.9rem; }
+.modal-event { display:flex; align-items:flex-start; gap:12px; padding:12px; border-radius:12px; margin-bottom:10px; border:2px solid rgba(0,0,0,.08); }
+.modal-picto { font-size:2.2rem; line-height:1; }
+.modal-info { flex:1; }
+.modal-info .name { font-size:1rem; font-weight:800; }
+.modal-info .detail { font-size:.85rem; margin-top:2px; opacity:.8; }
+.modal-who { display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; }
+.modal-who-badge { font-size:.75rem; font-weight:800; padding:2px 9px; border-radius:20px; border:1.5px solid rgba(0,0,0,.1); }
+.close-btn { width:100%; margin-top:16px; padding:12px; background:#1A1D2E; color:#fff; border:none; border-radius:12px; font-family:‘Nunito’,sans-serif; font-size:1rem; font-weight:800; cursor:pointer; transition:background .15s; }
+.close-btn:hover { background:var(–accent); }
+
+/* ── ADD EVENT MODAL ── */
+.add-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; align-items:center; justify-content:center; }
+.add-overlay.open { display:flex; }
+.add-modal { background:#fff; border-radius:20px; padding:28px; max-width:440px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,.2); max-height:90vh; overflow-y:auto; }
+.add-modal h2 { font-size:1.3rem; font-weight:900; margin-bottom:16px; }
+.field { margin-bottom:14px; }
+.field label { display:block; font-weight:800; font-size:.85rem; margin-bottom:4px; color:var(–muted); }
+.field input { width:100%; padding:10px 12px; border:2px solid var(–border); border-radius:10px; font-family:‘Nunito’,sans-serif; font-size:.95rem; font-weight:600; outline:none; transition:border-color .15s; color:var(–text); }
+.field input:focus { border-color:var(–accent); }
+.member-picker { display:flex; gap:8px; flex-wrap:wrap; }
+.member-btn { display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:20px; border:2px solid var(–border); background:#F5F7FF; font-family:‘Nunito’,sans-serif; font-size:.9rem; font-weight:700; cursor:pointer; transition:all .15s; color:var(–text); }
+.member-btn .dot { width:11px; height:11px; border-radius:50%; }
+.picto-picker { display:flex; flex-wrap:wrap; gap:6px; }
+.picto-opt { font-size:1.5rem; padding:6px; border-radius:8px; cursor:pointer; border:2px solid transparent; transition:all .12s; background:#F5F7FF; }
+.picto-opt:hover { border-color:var(–accent); transform:scale(1.1); }
+.picto-opt.selected { border-color:var(–accent); background:#EEF5FF; }
+.btn-row { display:flex; gap:10px; margin-top:18px; }
+.btn-primary { flex:1; padding:12px; background:var(–accent); color:#fff; border:none; border-radius:12px; font-family:‘Nunito’,sans-serif; font-size:1rem; font-weight:800; cursor:pointer; transition:background .15s; }
+.btn-primary:hover { background:#2B6FC5; }
+.btn-secondary { flex:1; padding:12px; background:#6B7280; color:#fff; border:2px solid #6B7280; border-radius:12px; font-family:‘Nunito’,sans-serif; font-size:1rem; font-weight:800; cursor:pointer; transition:all .15s; }
+.btn-secondary:hover { background:#4B5563; border-color:#4B5563; }
+.add-event-btn { display:flex; align-items:center; gap:8px; background:var(–accent); color:#fff; border:none; border-radius:12px; padding:10px 20px; font-family:‘Nunito’,sans-serif; font-size:1rem; font-weight:800; cursor:pointer; transition:background .15s; }
+.add-event-btn:hover { background:#2B6FC5; }
+
+/* ── SETTINGS PAGE ── */
+.settings-page { max-width:860px; margin:0 auto; }
+.settings-title { font-size:1.6rem; font-weight:900; margin-bottom:6px; }
+.settings-sub { font-size:.85rem; color:var(–muted); font-weight:600; margin-bottom:28px; }
+
+.person-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; }
+.person-tab {
+padding:10px 20px; border-radius:12px; border:2px solid var(–border);
+background:var(–card); font-family:‘Nunito’,sans-serif; font-size:.9rem; font-weight:800;
+cursor:pointer; transition:all .15s; color:var(–muted);
+display:flex; align-items:center; gap:8px;
+}
+.person-tab:hover { border-color:var(–accent); color:var(–text); }
+.person-tab.active { color:#fff; border-color:transparent; }
+.person-tab .tab-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+
+.settings-panel { display:none; }
+.settings-panel.active { display:block; }
+
+.settings-section { background:var(–card); border:2px solid var(–border); border-radius:16px; padding:20px; margin-bottom:16px; }
+.settings-section h3 { font-size:1rem; font-weight:900; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.settings-section h3 .sec-icon { font-size:1.2rem; }
+
+/* colour picker row */
+.colour-row { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.colour-swatch-grid { display:flex; gap:8px; flex-wrap:wrap; }
+.colour-swatch {
+width:36px; height:36px; border-radius:10px; cursor:pointer;
+border:3px solid transparent; transition:all .15s; flex-shrink:0;
+}
+.colour-swatch:hover { transform:scale(1.12); }
+.colour-swatch.selected { border-color:#1A1D2E; box-shadow:0 0 0 2px #fff inset; }
+.colour-custom { display:flex; align-items:center; gap:8px; }
+.colour-hex-input {
+width:110px; padding:7px 10px; border:2px solid var(–border); border-radius:8px;
+font-family:‘Nunito’,sans-serif; font-size:.85rem; font-weight:700; color:var(–text);
+outline:none;
+}
+.colour-preview { width:32px; height:32px; border-radius:8px; border:2px solid var(–border); flex-shrink:0; }
+
+/* field config rows */
+.field-config-list { display:flex; flex-direction:column; gap:8px; }
+.field-config-row {
+display:flex; align-items:center; gap:12px;
+background:#F5F7FF; border:2px solid var(–border); border-radius:12px;
+padding:10px 14px; cursor:grab; transition:box-shadow .15s;
+user-select:none; touch-action:none;
+}
+.field-config-row:active { cursor:grabbing; }
+.field-config-row.drag-over { border-color:var(–accent); background:#EEF5FF; }
+.drag-handle { font-size:1.1rem; color:var(–muted); flex-shrink:0; cursor:grab; }
+.field-config-name { flex:1; font-weight:800; font-size:.9rem; }
+.field-config-icon { font-size:1.2rem; flex-shrink:0; }
+
+/* toggle switch */
+.toggle { position:relative; width:44px; height:24px; flex-shrink:0; }
+.toggle input { opacity:0; width:0; height:0; position:absolute; }
+.toggle-slider {
+position:absolute; inset:0; background:#CBD5E0; border-radius:24px;
+transition:background .2s; cursor:pointer;
+}
+.toggle-slider::before {
+content:’’; position:absolute; width:18px; height:18px; left:3px; bottom:3px;
+background:#fff; border-radius:50%; transition:transform .2s;
+}
+.toggle input:checked + .toggle-slider { background:var(–accent); }
+.toggle input:checked + .toggle-slider::before { transform:translateX(20px); }
+
+.settings-save-row { display:flex; gap:10px; margin-top:24px; justify-content:flex-end; }
+
+/* ── PHOTO UPLOAD ── */
+.photo-section { display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+.photo-preview-wrap { position:relative; flex-shrink:0; }
+.photo-preview-img {
+width:80px; height:80px; border-radius:50%; object-fit:cover;
+border:3px solid var(–border); display:block;
+}
+.photo-preview-initials {
+width:80px; height:80px; border-radius:50%;
+display:flex; align-items:center; justify-content:center;
+font-size:1.8rem; font-weight:900; color:#fff;
+border:3px solid transparent;
+}
+.photo-remove-btn {
+position:absolute; top:-4px; right:-4px;
+width:22px; height:22px; border-radius:50%;
+background:#E74C3C; color:#fff; border:none;
+font-size:.7rem; cursor:pointer; font-weight:900;
+display:flex; align-items:center; justify-content:center;
+line-height:1;
+}
+.photo-actions { display:flex; flex-direction:column; gap:8px; }
+.photo-upload-label {
+display:inline-flex; align-items:center; gap:8px;
+padding:10px 18px; border-radius:12px;
+background:var(–accent); color:#fff;
+font-family:‘Nunito’,sans-serif; font-size:.9rem; font-weight:800;
+cursor:pointer; transition:background .15s;
+}
+.photo-upload-label:hover { background:#2B6FC5; }
+.photo-upload-input { display:none; }
+.photo-hint { font-size:.75rem; color:var(–muted); font-weight:600; }
+
+/* ── LOGIN PAGE ── */
+.login-page {
+min-height:100vh; display:flex; flex-direction:column;
+align-items:center; justify-content:center;
+padding:24px; margin:-20px;
+}
+.login-logo { font-size:2.8rem; margin-bottom:6px; }
+.login-title { font-size:1.6rem; font-weight:900; margin-bottom:4px; text-align:center; }
+.login-sub { font-size:.85rem; color:var(–muted); font-weight:600; margin-bottom:36px; text-align:center; }
+.profile-grid { display:flex; flex-wrap:wrap; gap:18px; justify-content:center; margin-bottom:10px; }
+.profile-card {
+display:flex; flex-direction:column; align-items:center; gap:12px;
+background:var(–card); border:3px solid var(–border); border-radius:20px;
+padding:26px 32px; cursor:pointer; transition:all .18s; min-width:140px;
+}
+.profile-card:hover { transform:translateY(-4px); box-shadow:0 8px 28px rgba(0,0,0,.12); }
+.profile-avatar {
+width:96px; height:96px; border-radius:50%;
+display:flex; align-items:center; justify-content:center;
+font-size:2.6rem; font-weight:900; color:#fff; flex-shrink:0;
+}
+.profile-name { font-size:1.1rem; font-weight:900; }
+.pin-screen {
+display:none; flex-direction:column; align-items:center; gap:18px;
+background:var(–card); border:2px solid var(–border); border-radius:24px;
+padding:28px 32px; max-width:320px; width:100%;
+box-shadow:0 8px 40px rgba(0,0,0,.1);
+}
+.pin-screen.visible { display:flex; }
+.pin-who { display:flex; align-items:center; gap:10px; font-size:1.1rem; font-weight:900; }
+.pin-who-dot { width:16px; height:16px; border-radius:50%; }
+.pin-dots { display:flex; gap:12px; }
+.pin-dot {
+width:20px; height:20px; border-radius:50%;
+border:3px solid var(–border); background:transparent; transition:all .15s;
+}
+.pin-dot.filled { border-color:var(–accent); background:var(–accent); }
+.pin-dot.error  { border-color:#E74C3C; background:#E74C3C; }
+.pin-error { color:#E74C3C; font-size:.85rem; font-weight:800; min-height:1.2em; }
+.numpad { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:100%; }
+.num-btn {
+background:#1A1D2E; border:2px solid #1A1D2E; border-radius:14px;
+padding:18px 10px; font-family:‘Nunito’,sans-serif; font-size:1.5rem; font-weight:900;
+cursor:pointer; transition:all .12s; color:#fff;
+display:flex; align-items:center; justify-content:center;
+box-shadow:0 3px 8px rgba(0,0,0,.18);
+}
+.num-btn:hover { background:var(–accent); color:#fff; border-color:var(–accent); transform:scale(1.06); }
+.num-btn:active { transform:scale(.95); }
+.num-btn.del { font-size:1.3rem; background:#C0392B; border-color:#C0392B; color:#fff; }
+.num-btn.del:hover { background:#922B21; border-color:#922B21; color:#fff; }
+.num-btn.back-btn { font-size:.85rem; background:#4B5563; border-color:#4B5563; color:#fff; }
+.num-btn.back-btn:hover { background:#374151; border-color:#374151; color:#fff; }
+.loggedin-chip {
+display:flex; align-items:center; gap:7px;
+background:var(–card); border:2px solid var(–border); border-radius:20px;
+padding:5px 12px; font-size:.82rem; font-weight:800; cursor:pointer;
+transition:all .15s; color:var(–text);
+}
+.loggedin-chip:hover { border-color:#E74C3C; color:#E74C3C; }
+.loggedin-chip-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.login-lang { position:absolute; top:20px; right:20px; display:flex; gap:6px; }
+
+@media (max-width:700px) {
+.day { min-height:80px; padding:5px; }
+.event .label { display:none; }
+.event { justify-content:center; }
+.event .picto { font-size:.95rem; }
+body { padding:10px; }
+.profile-card { min-width:110px; padding:18px 20px; }
+.profile-avatar { width:72px; height:72px; font-size:2rem; }
+}
+</style>
+
+</head>
+<body>
+
+<!-- ══════════════ LOGIN PAGE ══════════════ -->
+
+<div id="pageLogin" class="page active" style="position:relative;">
+
+  <!-- language switcher top-right on login -->
+
+  <div class="login-lang">
+    <button class="lang-btn active" id="loginLangEN" onclick="setLang('en')">
+      <svg class="flag" viewBox="0 0 22 16" xmlns="http://www.w3.org/2000/svg">
+        <rect width="22" height="16" fill="#012169"/>
+        <path d="M0,0 L22,16 M22,0 L0,16" stroke="#fff" stroke-width="3.2"/>
+        <path d="M0,0 L22,16 M22,0 L0,16" stroke="#C8102E" stroke-width="2"/>
+        <path d="M11,0 V16 M0,8 H22" stroke="#fff" stroke-width="5.2"/>
+        <path d="M11,0 V16 M0,8 H22" stroke="#C8102E" stroke-width="3.2"/>
+      </svg>EN
+    </button>
+    <button class="lang-btn" id="loginLangDA" onclick="setLang('da')">
+      <svg class="flag" viewBox="0 0 22 16" xmlns="http://www.w3.org/2000/svg">
+        <rect width="22" height="16" fill="#C60C30"/>
+        <rect x="7" y="0" width="3" height="16" fill="#fff"/>
+        <rect x="0" y="6.5" width="22" height="3" fill="#fff"/>
+      </svg>DA
+    </button>
+  </div>
+
+  <div class="login-page">
+    <div class="login-logo">🗓️</div>
+    <div class="login-title" id="loginTitle">FAMILY CALENDAR</div>
+    <div class="login-sub" id="loginSub">WHO IS USING THE CALENDAR TODAY?</div>
+
+```
+<!-- Profile cards -->
+<div class="profile-grid" id="profileGrid"></div>
+
+<!-- PIN pad (hidden until profile selected) -->
+<div class="pin-screen" id="pinScreen">
+  <div class="pin-who">
+    <div class="pin-who-dot" id="pinWhoDot"></div>
+    <span id="pinWhoName"></span>
+  </div>
+  <div class="pin-dots" id="pinDots">
+    <div class="pin-dot"></div>
+    <div class="pin-dot"></div>
+    <div class="pin-dot"></div>
+    <div class="pin-dot"></div>
+  </div>
+  <div class="pin-error" id="pinError"></div>
+  <div class="numpad" id="numpad"></div>
+</div>
+```
+
+  </div>
+</div>
+
+<!-- ══════════════ CALENDAR PAGE ══════════════ -->
+
+<div id="pageCalendar" class="page">
+
+  <div class="topbar">
+    <div style="font-size:1.1rem;font-weight:900;color:var(--text);" id="calTitle">🗓️ FAMILY CALENDAR</div>
+    <div class="topbar-right">
+      <div class="lang-switcher">
+        <button class="lang-btn active" id="langEN" onclick="setLang('en')">
+          <svg class="flag" viewBox="0 0 22 16" xmlns="http://www.w3.org/2000/svg">
+            <rect width="22" height="16" fill="#012169"/>
+            <path d="M0,0 L22,16 M22,0 L0,16" stroke="#fff" stroke-width="3.2"/>
+            <path d="M0,0 L22,16 M22,0 L0,16" stroke="#C8102E" stroke-width="2"/>
+            <path d="M11,0 V16 M0,8 H22" stroke="#fff" stroke-width="5.2"/>
+            <path d="M11,0 V16 M0,8 H22" stroke="#C8102E" stroke-width="3.2"/>
+          </svg>EN
+        </button>
+        <button class="lang-btn" id="langDA" onclick="setLang('da')">
+          <svg class="flag" viewBox="0 0 22 16" xmlns="http://www.w3.org/2000/svg">
+            <rect width="22" height="16" fill="#C60C30"/>
+            <rect x="7" y="0" width="3" height="16" fill="#fff"/>
+            <rect x="0" y="6.5" width="22" height="3" fill="#fff"/>
+          </svg>DA
+        </button>
+      </div>
+      <button class="loggedin-chip" id="logoutBtn" title="LOG OUT">
+        <span class="loggedin-chip-dot" id="loggedInDot"></span>
+        <span id="loggedInName">-</span>
+        <span style="color:var(--muted);font-size:.75rem;">✕</span>
+      </button>
+      <button class="settings-btn" id="openSettingsBtn" style="display:none;">⚙️ <span id="settingsBtnLabel">SETTINGS</span></button>
+    </div>
+  </div>
+
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="nav-btn" id="prevBtn">&#8592;</button>
+      <div class="month-label" id="monthLabel"></div>
+      <button class="nav-btn" id="nextBtn">&#8594;</button>
+    </div>
+    <button class="add-event-btn" id="openAddBtn">＋ <span id="addBtnLabel">ADD ACTIVITY</span></button>
+  </div>
+
+  <div class="legend" id="legend">
+    <div class="legend-item" data-member="mum"><div class="legend-dot" id="ldot-mum"></div><span data-i18n="mum">MUM</span></div>
+    <div class="legend-item" data-member="dad"><div class="legend-dot" id="ldot-dad"></div><span data-i18n="dad">DAD</span></div>
+    <div class="legend-item" data-member="child1"><div class="legend-dot" id="ldot-child1"></div> NOAH</div>
+    <div class="legend-item" data-member="family"><div class="legend-dot" id="ldot-family"></div><span data-i18n="wholeFamily">WHOLE FAMILY</span></div>
+  </div>
+
+  <div class="weekdays" id="weekdaysRow">
+    <div class="weekday" data-i18n="mon">MON</div><div class="weekday" data-i18n="tue">TUE</div>
+    <div class="weekday" data-i18n="wed">WED</div><div class="weekday" data-i18n="thu">THU</div>
+    <div class="weekday" data-i18n="fri">FRI</div><div class="weekday" data-i18n="sat">SAT</div>
+    <div class="weekday" data-i18n="sun">SUN</div>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- ══════════════ SETTINGS PAGE ══════════════ -->
+
+<div id="pageSettings" class="page">
+  <div class="topbar">
+    <div style="font-size:1.1rem;font-weight:900;color:var(--text);" id="settingsPageTitle">⚙️ SETTINGS</div>
+    <button class="settings-btn active" id="backToCalBtn">← <span id="backLabel">BACK TO CALENDAR</span></button>
+  </div>
+
+  <div class="settings-page">
+    <div class="settings-title" id="settingsTitleText">PERSONALISE EACH PERSON</div>
+    <div class="settings-sub" id="settingsSubText">CHOOSE A COLOUR AND CONFIGURE WHICH FIELDS TO SHOW WHEN ADDING AN ACTIVITY</div>
+
+```
+<!-- Person tabs -->
+<div class="person-tabs" id="personTabs"></div>
+
+<!-- Panels (one per person) injected by JS -->
+<div id="personPanels"></div>
+
+<div class="settings-save-row">
+  <button class="btn-secondary" id="settingsCancelBtn">CANCEL</button>
+  <button class="btn-primary" id="settingsSaveBtn">SAVE ✓</button>
+</div>
+```
+
+  </div>
+</div>
+
+<!-- ══════════ DAY DETAIL MODAL ══════════ -->
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle"></h2>
+    <div class="modal-date" id="modalDate"></div>
+    <div id="modalEvents"></div>
+    <button class="close-btn" id="closeModal">CLOSE ✕</button>
+  </div>
+</div>
+
+<!-- ══════════ ADD ACTIVITY MODAL ══════════ -->
+
+<div class="add-overlay" id="addOverlay">
+  <div class="add-modal">
+    <h2 id="addModalTitle">ADD ACTIVITY 🎉</h2>
+    <div id="addFormFields"></div>
+    <div class="btn-row">
+      <button class="btn-secondary" id="cancelAdd">CANCEL</button>
+      <button class="btn-primary" id="confirmAdd">ADD ✓</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// AUTH / LOGIN
+// ════════════════════════════════════════════════════════════
+// Profiles: key matches MEMBERS key. canSettings = access to settings page.
+const PROFILES = {
+  mum:    { pin:'0000', requiresPin:true,  canSettings:true  },
+  dad:    { pin:'0000', requiresPin:true,  canSettings:true  },
+  child1: { pin:null,   requiresPin:false, canSettings:false },
+  family: { pin:null,   requiresPin:false, canSettings:false },
+};
+
+let currentUser = null;  // key of logged-in member
+let pinBuffer = '';
+let pendingProfile = null; // profile key awaiting PIN
+
+// ── Build profile cards ──────────────────────────────────────
+function buildProfileGrid() {
+  const grid = document.getElementById('profileGrid');
+  grid.innerHTML = '';
+  Object.entries(MEMBERS).forEach(([k, m]) => {
+    const initials = m.label.split(' ').map(w=>w[0]).join('').slice(0,2);
+    const hasPin = PROFILES[k].requiresPin;
+    const avatarHtml = m.photo
+      ? `<img src="${m.photo}" style="width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid ${m.hex};" alt="${m.label}">`
+      : `<div class="profile-avatar" style="background:${m.hex}">${initials}</div>`;
+    const card = document.createElement('div');
+    card.className = 'profile-card';
+    card.style.borderColor = m.hex;
+    card.innerHTML = `
+      ${avatarHtml}
+      <div class="profile-name">${m.label}</div>
+      <div style="font-size:.72rem;color:var(--muted);font-weight:700;display:flex;align-items:center;gap:4px;">
+        ${hasPin ? '🔒 PIN' : '👆 TAP TO ENTER'}
+      </div>`;
+    card.addEventListener('click', () => selectProfile(k));
+    grid.appendChild(card);
+  });
+}
+
+// ── Select a profile → show PIN pad ─────────────────────────
+function selectProfile(key) {
+  const profile = PROFILES[key];
+  // No PIN required — log in directly
+  if (!profile.requiresPin) {
+    loginAs(key);
+    return;
+  }
+  // PIN required — show numpad
+  pendingProfile = key;
+  pinBuffer = '';
+  const m = MEMBERS[key];
+  document.getElementById('pinWhoDot').style.background = m.hex;
+  document.getElementById('pinWhoName').textContent = m.label;
+  document.getElementById('pinError').textContent = '';
+  updatePinDots();
+  document.getElementById('pinScreen').classList.add('visible');
+  document.getElementById('profileGrid').style.opacity = '0.35';
+  buildNumpad();
+}
+
+// ── Numpad ───────────────────────────────────────────────────
+function buildNumpad() {
+  const pad = document.getElementById('numpad');
+  pad.innerHTML = '';
+  const keys = ['1','2','3','4','5','6','7','8','9','BACK','0','DEL'];
+  keys.forEach(k => {
+    const btn = document.createElement('button');
+    if (k === 'DEL') {
+      btn.className = 'num-btn del';
+      btn.textContent = '⌫';
+      btn.addEventListener('click', () => { pinBuffer = pinBuffer.slice(0,-1); updatePinDots(); });
+    } else if (k === 'BACK') {
+      btn.className = 'num-btn back-btn';
+      btn.textContent = '← BACK';
+      btn.addEventListener('click', () => {
+        document.getElementById('pinScreen').classList.remove('visible');
+        document.getElementById('profileGrid').style.opacity = '1';
+        pinBuffer = ''; pendingProfile = null;
+        document.getElementById('pinError').textContent = '';
+      });
+    } else {
+      btn.className = 'num-btn';
+      btn.textContent = k;
+      btn.addEventListener('click', () => pressDigit(k));
+    }
+    pad.appendChild(btn);
+  });
+}
+
+function pressDigit(d) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += d;
+  updatePinDots();
+  if (pinBuffer.length === 4) setTimeout(checkPin, 120);
+}
+
+function updatePinDots() {
+  document.querySelectorAll('#pinDots .pin-dot').forEach((dot, i) => {
+    dot.classList.toggle('filled', i < pinBuffer.length);
+    dot.classList.remove('error');
+  });
+}
+
+function checkPin() {
+  const profile = PROFILES[pendingProfile];
+  if (pinBuffer === profile.pin) {
+    loginAs(pendingProfile);
+  } else {
+    // shake + show error
+    document.querySelectorAll('#pinDots .pin-dot').forEach(d => { d.classList.remove('filled'); d.classList.add('error'); });
+    document.getElementById('pinError').textContent = I18N[lang].pinWrong || 'WRONG PIN — TRY AGAIN';
+    setTimeout(() => {
+      document.querySelectorAll('#pinDots .pin-dot').forEach(d => d.classList.remove('error'));
+      document.getElementById('pinError').textContent = '';
+    }, 900);
+    pinBuffer = '';
+  }
+}
+
+// ── Log in ───────────────────────────────────────────────────
+function loginAs(key) {
+  currentUser = key;
+  const m = MEMBERS[key];
+
+  // Update logged-in chip
+  // Update loggedin chip - photo or colour dot
+  const chipDot = document.getElementById('loggedInDot');
+  if (m.photo) {
+    chipDot.style.background = 'none';
+    chipDot.style.backgroundImage = `url(${m.photo})`;
+    chipDot.style.backgroundSize = 'cover';
+    chipDot.style.backgroundPosition = 'center';
+    chipDot.style.border = `2px solid ${m.hex}`;
+  } else {
+    chipDot.style.background = m.hex;
+    chipDot.style.backgroundImage = '';
+    chipDot.style.border = '';
+  }
+  document.getElementById('loggedInName').textContent = m.label;
+
+  // Show/hide settings button
+  const canSettings = PROFILES[key].canSettings;
+  document.getElementById('openSettingsBtn').style.display = canSettings ? 'flex' : 'none';
+
+  showPage('pageCalendar');
+  render();
+}
+
+// ── Log out ──────────────────────────────────────────────────
+function logout() {
+  currentUser = null;
+  pendingProfile = null;
+  pinBuffer = '';
+  document.getElementById('pinScreen').classList.remove('visible');
+  document.getElementById('profileGrid').style.opacity = '1';
+  buildProfileGrid();
+  showPage('pageLogin');
+}
+
+document.getElementById('logoutBtn').addEventListener('click', logout);
+
+// ════════════════════════════════════════════════════════════
+// TRANSLATIONS
+// ════════════════════════════════════════════════════════════
+const I18N = {
+  en: {
+    calTitle:'🗓️ FAMILY CALENDAR', settingsBtn:'SETTINGS', back:'BACK TO CALENDAR',
+    addBtn:'ADD ACTIVITY', addTitle:'ADD ACTIVITY 🎉',
+    fName:'ACTIVITY NAME', fDate:'DATE', fTime:'TIME',
+    fWho:'WHO IS JOINING?', fPicto:'PICK A PICTURE',
+    cancel:'CANCEL', addConfirm:'ADD ✓', close:'CLOSE ✕',
+    today:'TODAY', noActivities:'NO ACTIVITIES THIS DAY 🌟',
+    moreEvents:(n)=>`+${n} MORE`,
+    mum:'MUM', dad:'DAD', wholeFamily:'WHOLE FAMILY',
+    mon:'MON',tue:'TUE',wed:'WED',thu:'THU',fri:'FRI',sat:'SAT',sun:'SUN',
+    months:['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'],
+    alertName:'PLEASE FILL IN AT LEAST A NAME AND DATE!',
+    alertMember:'PLEASE SELECT AT LEAST ONE FAMILY MEMBER!',
+    pinWrong:'WRONG PIN — TRY AGAIN',
+    loginTitle:'FAMILY CALENDAR',
+    loginSub:'WHO IS USING THE CALENDAR TODAY?',
+    photoLabel:'PROFILE PICTURE',
+    uploadPhoto:'UPLOAD PHOTO',
+    photoHint:'JPG, PNG OR GIF — MAX 5MB',
+    locale:'en-GB',
+    settingsTitle:'PERSONALISE EACH PERSON',
+    settingsSub:'CHOOSE A COLOUR AND CONFIGURE WHICH FIELDS TO SHOW WHEN ADDING AN ACTIVITY',
+    colourLabel:'COLOUR',
+    fieldsLabel:'ENTRY FIELDS — TOGGLE ON/OFF AND DRAG TO REORDER',
+    save:'SAVE ✓',
+    placeholderName:'E.G. SWIMMING LESSON',
+  },
+  da: {
+    calTitle:'🗓️ FAMILIE KALENDER', settingsBtn:'INDSTILLINGER', back:'TILBAGE TIL KALENDER',
+    addBtn:'TILFØJ AKTIVITET', addTitle:'TILFØJ AKTIVITET 🎉',
+    fName:'AKTIVITETSNAVN', fDate:'DATO', fTime:'TIDSPUNKT',
+    fWho:'HVEM DELTAGER?', fPicto:'VÆLG ET BILLEDE',
+    cancel:'ANNULLER', addConfirm:'TILFØJ ✓', close:'LUK ✕',
+    today:'I DAG', noActivities:'INGEN AKTIVITETER DENNE DAG 🌟',
+    moreEvents:(n)=>`+${n} MERE`,
+    mum:'MOR', dad:'FAR', wholeFamily:'HELE FAMILIEN',
+    mon:'MAN',tue:'TIR',wed:'ONS',thu:'TOR',fri:'FRE',sat:'LØR',sun:'SØN',
+    months:['JANUAR','FEBRUAR','MARTS','APRIL','MAJ','JUNI','JULI','AUGUST','SEPTEMBER','OKTOBER','NOVEMBER','DECEMBER'],
+    alertName:'UDFYLD VENLIGST MINDST ET NAVN OG EN DATO!',
+    alertMember:'VÆLG VENLIGST MINDST ÉT FAMILIEMEDLEM!',
+    pinWrong:'FORKERT PINKODE — PRØV IGEN',
+    loginTitle:'FAMILIE KALENDER',
+    loginSub:'HVEM BRUGER KALENDEREN I DAG?',
+    photoLabel:'PROFILBILLEDE',
+    uploadPhoto:'UPLOAD FOTO',
+    photoHint:'JPG, PNG ELLER GIF — MAKS 5MB',
+    locale:'da-DK',
+    settingsTitle:'TILPAS HVER PERSON',
+    settingsSub:'VÆLG EN FARVE OG KONFIGURER HVILKE FELTER DER VISES NÅR DU TILFØJER EN AKTIVITET',
+    colourLabel:'FARVE',
+    fieldsLabel:'INDTASTNINGSFELTER — SLÅ TIL/FRA OG TRÆK FOR AT ÆNDRE RÆKKEFØLGE',
+    save:'GEM ✓',
+    placeholderName:'F.EKS. SVØMNING',
+  }
+};
+
+let lang = 'en';
+function t(key,...args){ const v=I18N[lang][key]; return typeof v==='function'?v(...args):v; }
+
+// ════════════════════════════════════════════════════════════
+// COLOUR PALETTE
+// ════════════════════════════════════════════════════════════
+const PALETTE = [
+  '#FF7EB3','#FF6B6B','#FF9F43','#FECA57','#54A0FF',
+  '#5F27CD','#3EBD8E','#00D2D3','#A29BFE','#FD79A8',
+  '#6C5CE7','#E17055','#00B894','#0984E3','#2D3436',
+  '#B2BEC3','#9B59B6','#1ABC9C','#E74C3C','#F39C12',
+];
+
+// Derive a light bg and dark text from a hex colour
+function hexToBg(hex){ return hex+'22'; }
+function hexToText(hex){
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  const lum=(0.299*r+0.587*g+0.114*b)/255;
+  return lum>0.55 ? '#1A1D2E' : hex.replace(/^#/,'').length===6 ? darken(hex) : '#fff';
+}
+function darken(hex){
+  let r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  r=Math.max(0,r-80); g=Math.max(0,g-80); b=Math.max(0,b-80);
+  return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// MEMBER CONFIG  (includes per-person field settings)
+// ════════════════════════════════════════════════════════════
+// fields: array of {id, show} — order = display order
+const DEFAULT_FIELDS = [
+  {id:'name',  show:true},
+  {id:'date',  show:true},
+  {id:'time',  show:true},
+  {id:'who',   show:true},
+  {id:'picto', show:true},
+];
+
+function cloneFields(){ return DEFAULT_FIELDS.map(f=>({...f})); }
+
+const MEMBERS = {
+  mum:    { label:'MUM',          hex:'#FF7EB3', cls:'sel-mum',    fields:cloneFields(), photo:null },
+  dad:    { label:'DAD',          hex:'#4A90E2', cls:'sel-dad',    fields:cloneFields(), photo:null },
+  child1: { label:'NOAH',         hex:'#3EBD8E', cls:'sel-child1', fields:cloneFields(), photo:null },
+  family: { label:'WHOLE FAMILY', hex:'#9B59B6', cls:'sel-family', fields:cloneFields(), photo:null },
+};
+
+function memberBg(key){  return hexToBg(MEMBERS[key].hex); }
+function memberText(key){ return darken(MEMBERS[key].hex); }
+
+// ════════════════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════════════════
+const PICTOS = [
+  {e:'🏊',l:'SWIMMING'},{e:'⚽',l:'FOOTBALL'},{e:'🎨',l:'ART'},{e:'📚',l:'READING'},
+  {e:'🎵',l:'MUSIC'},{e:'🍎',l:'SCHOOL'},{e:'🏥',l:'DOCTOR'},{e:'🛒',l:'SHOPPING'},
+  {e:'🎂',l:'BIRTHDAY'},{e:'🚗',l:'CAR TRIP'},{e:'🏃',l:'RUNNING'},{e:'🎭',l:'THEATRE'},
+  {e:'🍕',l:'DINNER OUT'},{e:'🧘',l:'YOGA'},{e:'🎮',l:'GAMING'},{e:'🌳',l:'PARK'},
+  {e:'✂️',l:'HAIRCUT'},{e:'💊',l:'MEDICINE'},{e:'🐶',l:'PETS'},{e:'🏫',l:'SCHOOL TRIP'},
+  {e:'⛪',l:'CHURCH'},{e:'🏋️',l:'GYM'},{e:'🎤',l:'SINGING'},{e:'🧩',l:'THERAPY'},
+];
+
+const NOW = new Date();
+const TODAY_STR = `${NOW.getFullYear()}-${String(NOW.getMonth()+1).padStart(2,'0')}-${String(NOW.getDate()).padStart(2,'0')}`;
+let viewYear=NOW.getFullYear(), viewMonth=NOW.getMonth();
+let activeMembers=new Set(Object.keys(MEMBERS));
+let selectedPicto=PICTOS[0].e;
+let selectedMembers=new Set();
+
+function makeDateStr(y,m,d){ return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+const y=NOW.getFullYear(), mo=NOW.getMonth();
+
+let EVENTS=[
+  {id:1, date:makeDateStr(y,mo,2),  time:'09:00',name:'SWIMMING',      emoji:'🏊',members:['child1']       },
+  {id:2, date:makeDateStr(y,mo,2),  time:'14:00',name:'YOGA CLASS',    emoji:'🧘',members:['mum']          },
+  {id:3, date:makeDateStr(y,mo,5),  time:'08:30',name:'SCHOOL TRIP',   emoji:'🏫',members:['child1']       },
+  {id:4, date:makeDateStr(y,mo,5),  time:'16:00',name:'CYCLING',       emoji:'🚗',members:['dad','child1'] },
+  {id:5, date:makeDateStr(y,mo,7),  time:'18:00',name:'DINNER OUT',    emoji:'🍕',members:['family']       },
+  {id:6, date:makeDateStr(y,mo,9),  time:'10:00',name:'ART CLASS',     emoji:'🎨',members:['child1']       },
+  {id:7, date:makeDateStr(y,mo,9),  time:'16:00',name:'FOOTBALL',      emoji:'⚽',members:['dad']          },
+  {id:8, date:makeDateStr(y,mo,12), time:'11:00',name:'DOCTOR',        emoji:'🏥',members:['mum','child1'] },
+  {id:9, date:makeDateStr(y,mo,14), time:'09:00',name:'GYM',           emoji:'🏋️',members:['dad']          },
+  {id:10,date:makeDateStr(y,mo,14), time:'10:30',name:'SHOPPING',      emoji:'🛒',members:['mum','dad']    },
+  {id:11,date:TODAY_STR,            time:'15:30',name:'MUSIC LESSON',  emoji:'🎵',members:['child1']       },
+  {id:12,date:TODAY_STR,            time:'19:00',name:'FAMILY MOVIE',  emoji:'🎮',members:['family']       },
+  {id:13,date:makeDateStr(y,mo,18), time:'10:00',name:'PARK WALK',     emoji:'🌳',members:['family']       },
+  {id:14,date:makeDateStr(y,mo,20), time:'14:00',name:'HAIRCUT',       emoji:'✂️',members:['child1']       },
+  {id:15,date:makeDateStr(y,mo,22), time:'09:30',name:'THERAPY',       emoji:'🧩',members:['child1']       },
+  {id:16,date:makeDateStr(y,mo,22), time:'11:00',name:'RUNNING',       emoji:'🏃',members:['mum','dad']    },
+  {id:17,date:makeDateStr(y,mo,25), time:'18:00',name:'BIRTHDAY PARTY',emoji:'🎂',members:['family']       },
+  {id:18,date:makeDateStr(y,mo,28), time:'07:30',name:'RUNNING',       emoji:'🏃',members:['dad']          },
+];
+let nextId=30;
+
+// ════════════════════════════════════════════════════════════
+// COLOUR HELPERS
+// ════════════════════════════════════════════════════════════
+function eventStyle(members){
+  if(members.length===1){
+    const hex=MEMBERS[members[0]].hex;
+    return {bg:hexToBg(hex),text:darken(hex),border:hex+'55',colors:[hex],multi:false};
+  }
+  const colors=members.map(k=>MEMBERS[k].hex);
+  const pct=100/colors.length;
+  const stops=colors.flatMap((c,i)=>[`${c}38 ${Math.round(i*pct)}%`,`${c}38 ${Math.round((i+1)*pct)}%`]).join(',');
+  return {bg:`linear-gradient(135deg,${stops})`,text:darken(MEMBERS[members[0]].hex),border:colors[0]+'55',colors,multi:true};
+}
+
+// ════════════════════════════════════════════════════════════
+// APPLY CSS VARS FROM MEMBER COLOURS
+// ════════════════════════════════════════════════════════════
+function applyMemberColours(){
+  const r=document.documentElement.style;
+  Object.entries(MEMBERS).forEach(([k,m])=>{
+    r.setProperty(`--${k}`, m.hex);
+    r.setProperty(`--${k}-bg`, hexToBg(m.hex));
+  });
+  // refresh legend dots
+  Object.keys(MEMBERS).forEach(k=>{
+    const dot=document.getElementById(`ldot-${k}`);
+    if(dot) dot.style.background=MEMBERS[k].hex;
+  });
+  // refresh member buttons in add form
+  document.querySelectorAll('.member-btn').forEach(btn=>{
+    const m=btn.dataset.m;
+    if(m&&MEMBERS[m]){
+      btn.querySelector('.dot').style.background=MEMBERS[m].hex;
+      if(btn.classList.contains('selected')) applyMemberBtnSelected(btn,m);
+    }
+  });
+}
+
+function applyMemberBtnSelected(btn,m){
+  const hex=MEMBERS[m].hex;
+  btn.style.borderColor=hex;
+  btn.style.background=hexToBg(hex);
+  btn.style.color=darken(hex);
+}
+
+// ════════════════════════════════════════════════════════════
+// RENDER CALENDAR
+// ════════════════════════════════════════════════════════════
+function eventVisible(ev){
+  if(ev.members.includes('family')) return activeMembers.has('family');
+  return ev.members.some(m=>activeMembers.has(m));
+}
+
+function renderEvent(ev){
+  const s=eventStyle(ev.members);
+  const dots=s.multi?`<span class="event-dots">${s.colors.map(c=>`<span class="event-dot" style="background:${c}"></span>`).join('')}</span>`:'';
+  return `<div class="event" style="background:${s.bg};color:${s.text};border-color:${s.border}">
+    ${dots}<span class="picto">${ev.emoji}</span>
+    <span class="label"><div>${ev.name}</div><div class="time">${ev.time}</div></span>
+  </div>`;
+}
+
+function render(){
+  document.getElementById('monthLabel').textContent=`${t('months')[viewMonth]} ${viewYear}`;
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  const first=new Date(viewYear,viewMonth,1);
+  let off=first.getDay()-1; if(off<0)off=6;
+  const days=new Date(viewYear,viewMonth+1,0).getDate();
+  for(let i=0;i<off;i++){ const e=document.createElement('div');e.className='day empty';grid.appendChild(e); }
+  for(let d=1;d<=days;d++){
+    const ds=makeDateStr(viewYear,viewMonth,d), isT=ds===TODAY_STR;
+    const evs=EVENTS.filter(e=>e.date===ds&&eventVisible(e)).sort((a,b)=>a.time.localeCompare(b.time));
+    const el=document.createElement('div');
+    el.className='day'+(isT?' today':'');
+    const badge=isT?`<span class="today-badge">${t('today')}</span>`:'';
+    let eh=evs.slice(0,3).map(renderEvent).join('');
+    if(evs.length>3) eh+=`<div style="font-size:.75rem;font-weight:800;color:var(--muted);padding:2px 4px">${t('moreEvents',evs.length-3)}</div>`;
+    el.innerHTML=`<div class="day-num">${d} ${badge}</div><div class="events">${eh}</div>`;
+    el.addEventListener('click',()=>openModal(d,ds,evs));
+    grid.appendChild(el);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// DAY MODAL
+// ════════════════════════════════════════════════════════════
+function openModal(d,ds,events){
+  document.getElementById('modalTitle').textContent=`${t('months')[viewMonth]} ${d}, ${viewYear}`;
+  document.getElementById('modalDate').textContent=ds===TODAY_STR?`📅 ${t('today')}`:new Date(ds+'T12:00').toLocaleDateString(t('locale'),{weekday:'long'});
+  const c=document.getElementById('modalEvents');
+  if(!events.length){ c.innerHTML=`<p style="color:var(--muted);font-weight:600;text-align:center;padding:20px 0">${t('noActivities')}</p>`; }
+  else {
+    c.innerHTML=events.map(ev=>{
+      const s=eventStyle(ev.members);
+      const badges=ev.members.map(m=>{
+        const hex=MEMBERS[m].hex;
+        return `<span class="modal-who-badge" style="background:${hexToBg(hex)};color:${darken(hex)};border-color:${hex}55">${MEMBERS[m].label}</span>`;
+      }).join('');
+      return `<div class="modal-event" style="background:${s.bg};border-color:${s.border}">
+        <div class="modal-picto">${ev.emoji}</div>
+        <div class="modal-info"><div class="name" style="color:${s.text}">${ev.name}</div>
+        <div class="detail">🕐 ${ev.time}</div><div class="modal-who">${badges}</div></div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('overlay').classList.add('open');
+}
+document.getElementById('closeModal').addEventListener('click',()=>document.getElementById('overlay').classList.remove('open'));
+document.getElementById('overlay').addEventListener('click',e=>{ if(e.target===document.getElementById('overlay')) document.getElementById('overlay').classList.remove('open'); });
+
+// ════════════════════════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════════════════════════
+document.getElementById('prevBtn').addEventListener('click',()=>{ viewMonth--;if(viewMonth<0){viewMonth=11;viewYear--;} render(); });
+document.getElementById('nextBtn').addEventListener('click',()=>{ viewMonth++;if(viewMonth>11){viewMonth=0;viewYear++;} render(); });
+
+// ════════════════════════════════════════════════════════════
+// LEGEND FILTER
+// ════════════════════════════════════════════════════════════
+document.querySelectorAll('.legend-item').forEach(el=>{
+  el.addEventListener('click',()=>{
+    const m=el.dataset.member;
+    if(activeMembers.has(m)) activeMembers.delete(m); else activeMembers.add(m);
+    el.classList.toggle('inactive',!activeMembers.has(m));
+    render();
+  });
+});
+
+// ════════════════════════════════════════════════════════════
+// ADD ACTIVITY — dynamic form based on member field config
+// ════════════════════════════════════════════════════════════
+// Returns effective fields for selected members (union, sorted by first member)
+function getEffectiveFields(){
+  // If a single member is selected, use their field config
+  // If multiple, use the union of visible fields in the order of first selected member
+  const sel=[...selectedMembers].filter(m=>m!=='family');
+  const primary=sel[0]||'mum';
+  return MEMBERS[primary].fields.filter(f=>f.show);
+}
+
+function buildAddForm(){
+  const container=document.getElementById('addFormFields');
+  container.innerHTML='';
+  const fields=getEffectiveFields();
+  const FIELD_HTML={
+    name:()=>`<div class="field"><label>${t('fName')}</label><input type="text" id="newName" placeholder="${t('placeholderName')}"></div>`,
+    date:()=>`<div class="field"><label>${t('fDate')}</label><input type="date" id="newDate" value="${TODAY_STR}"></div>`,
+    time:()=>`<div class="field"><label>${t('fTime')}</label><input type="time" id="newTime"></div>`,
+    who: ()=>{
+      const btns=Object.entries(MEMBERS).map(([k,m])=>{
+        const sel=selectedMembers.has(k);
+        const style=sel?`border-color:${m.hex};background:${hexToBg(m.hex)};color:${darken(m.hex)}`:'';
+        return `<button class="member-btn${sel?' selected':''}" data-m="${k}" style="${style}"><span class="dot" style="background:${m.hex}"></span>${m.label}</button>`;
+      }).join('');
+      return `<div class="field"><label>${t('fWho')}</label><div class="member-picker" id="memberPicker">${btns}</div></div>`;
+    },
+    picto:()=>{
+      const opts=PICTOS.map(p=>`<button class="picto-opt${p.e===selectedPicto?' selected':''}" data-e="${p.e}" title="${p.l}">${p.e}</button>`).join('');
+      return `<div class="field"><label>${t('fPicto')}</label><div class="picto-picker" id="pictoPicker">${opts}</div></div>`;
+    },
+  };
+  // Always show WHO field first (it controls which other fields are relevant), but respect order
+  fields.forEach(f=>{ if(FIELD_HTML[f.id]) container.innerHTML+=FIELD_HTML[f.id](); });
+
+  // Re-attach member picker events
+  container.querySelectorAll('.member-btn').forEach(btn=>{ btn.addEventListener('click',()=>{ toggleMember(btn.dataset.m); buildAddForm(); }); });
+  // Re-attach picto events
+  container.querySelectorAll('.picto-opt').forEach(btn=>{ btn.addEventListener('click',()=>{ selectedPicto=btn.dataset.e; buildAddForm(); }); });
+}
+
+function toggleMember(m){
+  if(m==='family'){
+    selectedMembers.clear(); selectedMembers.add('family');
+  } else {
+    selectedMembers.delete('family');
+    if(selectedMembers.has(m)) selectedMembers.delete(m); else selectedMembers.add(m);
+  }
+}
+
+document.getElementById('openAddBtn').addEventListener('click',()=>{
+  selectedMembers.clear(); selectedPicto=PICTOS[0].e;
+  buildAddForm();
+  document.getElementById('addOverlay').classList.add('open');
+});
+document.getElementById('cancelAdd').addEventListener('click',()=>document.getElementById('addOverlay').classList.remove('open'));
+document.getElementById('addOverlay').addEventListener('click',e=>{ if(e.target===document.getElementById('addOverlay')) document.getElementById('addOverlay').classList.remove('open'); });
+
+document.getElementById('confirmAdd').addEventListener('click',()=>{
+  const nameEl=document.getElementById('newName');
+  const dateEl=document.getElementById('newDate');
+  const timeEl=document.getElementById('newTime');
+  const name=(nameEl?nameEl.value.trim():'').toUpperCase();
+  const date=dateEl?dateEl.value:'';
+  const time=timeEl?timeEl.value:'09:00';
+  if(!name||!date){ alert(t('alertName')); return; }
+  if(!selectedMembers.size){ alert(t('alertMember')); return; }
+  EVENTS.push({id:nextId++,date,time:time||'09:00',name,emoji:selectedPicto,members:[...selectedMembers]});
+  document.getElementById('addOverlay').classList.remove('open');
+  render();
+});
+
+// ════════════════════════════════════════════════════════════
+// SETTINGS PAGE
+// ════════════════════════════════════════════════════════════
+let settingsDraft={}; // deep copy of member configs while editing
+let activePerson=Object.keys(MEMBERS)[0];
+
+function openSettings(){
+  // Deep-clone current config into draft
+  settingsDraft={};
+  Object.entries(MEMBERS).forEach(([k,m])=>{
+    settingsDraft[k]={ hex:m.hex, fields:m.fields.map(f=>({...f})), photo:m.photo };
+  });
+  activePerson=Object.keys(MEMBERS)[0];
+  buildSettingsPage();
+  showPage('pageSettings');
+}
+
+function buildSettingsPage(){
+  document.getElementById('settingsTitleText').textContent=t('settingsTitle');
+  document.getElementById('settingsSubText').textContent=t('settingsSub');
+  document.getElementById('settingsSaveBtn').textContent=t('save');
+  document.getElementById('settingsCancelBtn').textContent=t('cancel');
+  buildPersonTabs();
+  buildPersonPanels();
+}
+
+function buildPersonTabs(){
+  const container=document.getElementById('personTabs');
+  container.innerHTML='';
+  Object.entries(MEMBERS).forEach(([k,m])=>{
+    const btn=document.createElement('button');
+    btn.className='person-tab'+(k===activePerson?' active':'');
+    btn.innerHTML=`<span class="tab-dot" style="background:${settingsDraft[k].hex}"></span>${m.label}`;
+    btn.style.background=k===activePerson?settingsDraft[k].hex:'';
+    btn.addEventListener('click',()=>{ activePerson=k; buildPersonTabs(); buildPersonPanels(); });
+    container.appendChild(btn);
+  });
+}
+
+function buildPersonPanels(){
+  const container=document.getElementById('personPanels');
+  container.innerHTML='';
+  Object.entries(MEMBERS).forEach(([k,m])=>{
+    const panel=document.createElement('div');
+    panel.className='settings-panel'+(k===activePerson?' active':'');
+    panel.innerHTML=buildPersonPanel(k,m);
+    container.appendChild(panel);
+    if(k===activePerson) attachPanelEvents(panel,k);
+  });
+}
+
+function buildPersonPanel(k,m){
+  const draft=settingsDraft[k];
+  const swatches=PALETTE.map(c=>`<div class="colour-swatch${c===draft.hex?' selected':''}" data-c="${c}" style="background:${c}" title="${c}"></div>`).join('');
+  
+  const FIELD_ICONS={name:'✏️',date:'📅',time:'🕐',who:'👥',picto:'🖼️'};
+  const fieldKeys={name:t('fName'),date:t('fDate'),time:t('fTime'),who:t('fWho'),picto:t('fPicto')};
+
+  const fieldRows=draft.fields.map((f,i)=>`
+    <div class="field-config-row" data-field="${f.id}" data-idx="${i}">
+      <span class="drag-handle">☰</span>
+      <span class="field-config-icon">${FIELD_ICONS[f.id]||'•'}</span>
+      <span class="field-config-name">${fieldKeys[f.id]||f.id}</span>
+      <label class="toggle">
+        <input type="checkbox" ${f.show?'checked':''} data-field="${f.id}">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>`).join('');
+
+  // Photo preview
+  const photoHtml = draft.photo
+    ? `<div class="photo-preview-wrap">
+         <img class="photo-preview-img" src="${draft.photo}" alt="PHOTO">
+         <button class="photo-remove-btn" id="photoRemove-${k}" title="REMOVE">✕</button>
+       </div>`
+    : `<div class="photo-preview-wrap">
+         <div class="photo-preview-initials" style="background:${draft.hex}">${m.label.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+       </div>`;
+
+  return `
+    <div class="settings-section">
+      <h3><span class="sec-icon">🖼️</span> ${t('photoLabel')}</h3>
+      <div class="photo-section">
+        ${photoHtml}
+        <div class="photo-actions">
+          <label class="photo-upload-label" for="photoInput-${k}">
+            📷 ${t('uploadPhoto')}
+            <input class="photo-upload-input" type="file" id="photoInput-${k}" accept="image/*">
+          </label>
+          <div class="photo-hint">${t('photoHint')}</div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <h3><span class="sec-icon">🎨</span> ${t('colourLabel')}</h3>
+      <div class="colour-row">
+        <div class="colour-swatch-grid">${swatches}</div>
+        <div class="colour-custom">
+          <input class="colour-hex-input" type="text" value="${draft.hex}" maxlength="7" placeholder="#RRGGBB">
+          <div class="colour-preview" style="background:${draft.hex}"></div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <h3><span class="sec-icon">📋</span> ${t('fieldsLabel')}</h3>
+      <div class="field-config-list" id="fieldList-${k}">${fieldRows}</div>
+    </div>`;
+}
+
+function attachPanelEvents(panel,k){
+  const draft=settingsDraft[k];
+
+  // Colour swatches
+  panel.querySelectorAll('.colour-swatch').forEach(sw=>{
+    sw.addEventListener('click',()=>{
+      draft.hex=sw.dataset.c;
+      panel.querySelectorAll('.colour-swatch').forEach(s=>s.classList.toggle('selected',s.dataset.c===draft.hex));
+      panel.querySelector('.colour-hex-input').value=draft.hex;
+      panel.querySelector('.colour-preview').style.background=draft.hex;
+      buildPersonTabs();
+    });
+  });
+
+  // Hex input
+  const hexIn=panel.querySelector('.colour-hex-input');
+  const prev=panel.querySelector('.colour-preview');
+  hexIn.addEventListener('input',()=>{
+    const v=hexIn.value.trim();
+    if(/^#[0-9A-Fa-f]{6}$/.test(v)){
+      draft.hex=v;
+      prev.style.background=v;
+      panel.querySelectorAll('.colour-swatch').forEach(s=>s.classList.toggle('selected',s.dataset.c===v));
+      buildPersonTabs();
+    }
+  });
+
+  // ── Photo upload ──────────────────────────────────────────
+  const photoInput = panel.querySelector(`#photoInput-${k}`);
+  if (photoInput) {
+    photoInput.addEventListener('change', () => {
+      const file = photoInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        draft.photo = e.target.result;
+        // rebuild panel to show new preview
+        buildPersonPanels();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  const removeBtn = panel.querySelector(`#photoRemove-${k}`);
+  if (removeBtn) {
+    removeBtn.addEventListener('click', () => {
+      draft.photo = null;
+      buildPersonPanels();
+    });
+  }
+
+  // Toggle visibility
+  panel.querySelectorAll('.toggle input').forEach(cb=>{
+    cb.addEventListener('change',()=>{
+      const f=draft.fields.find(x=>x.id===cb.dataset.field);
+      if(f) f.show=cb.checked;
+    });
+  });
+
+  // ── Pointer-based drag-to-reorder ─────────────────────────
+  const list = panel.querySelector(`#fieldList-${k}`);
+  let dragSrc = null;
+
+  function getRows(){ return [...list.querySelectorAll('.field-config-row')]; }
+
+  function rowFromPoint(x, y){
+    return getRows().find(r => {
+      const rect = r.getBoundingClientRect();
+      return y >= rect.top && y <= rect.bottom;
+    }) || null;
+  }
+
+  list.querySelectorAll('.field-config-row').forEach(row => {
+    row.addEventListener('pointerdown', e => {
+      dragSrc = row;
+      dragSrc.style.opacity = '0.45';
+      dragSrc.style.boxShadow = '0 6px 24px rgba(0,0,0,.18)';
+      dragSrc.style.cursor = 'grabbing';
+      list.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+  });
+
+  list.addEventListener('pointermove', e => {
+    if (!dragSrc) return;
+    const target = rowFromPoint(e.clientX, e.clientY);
+    if (!target || target === dragSrc) return;
+    const rows = getRows();
+    const srcI = rows.indexOf(dragSrc);
+    const tgtI = rows.indexOf(target);
+    if (srcI < tgtI) list.insertBefore(dragSrc, target.nextSibling);
+    else             list.insertBefore(dragSrc, target);
+  });
+
+  list.addEventListener('pointerup', () => {
+    if (!dragSrc) return;
+    dragSrc.style.opacity = '';
+    dragSrc.style.boxShadow = '';
+    dragSrc.style.cursor = '';
+    // Commit new order to draft
+    const newOrder = getRows().map(r => r.dataset.field);
+    draft.fields.sort((a, b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
+    getRows().forEach((r, i) => r.dataset.idx = i);
+    dragSrc = null;
+  });
+}
+
+document.getElementById('settingsSaveBtn').addEventListener('click',()=>{
+  Object.entries(settingsDraft).forEach(([k,d])=>{
+    MEMBERS[k].hex=d.hex;
+    MEMBERS[k].fields=d.fields.map(f=>({...f}));
+    MEMBERS[k].photo=d.photo;
+  });
+  applyMemberColours();
+  showPage('pageCalendar');
+  render();
+});
+document.getElementById('settingsCancelBtn').addEventListener('click',()=>showPage('pageCalendar'));
+document.getElementById('openSettingsBtn').addEventListener('click',openSettings);
+document.getElementById('backToCalBtn').addEventListener('click',()=>showPage('pageCalendar'));
+
+// ════════════════════════════════════════════════════════════
+// PAGE SWITCHER
+// ════════════════════════════════════════════════════════════
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ════════════════════════════════════════════════════════════
+// LANGUAGE
+// ════════════════════════════════════════════════════════════
+function setLang(l){
+  lang=l;
+  // update all lang buttons on both pages
+  ['langEN','loginLangEN'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.toggle('active',l==='en'); });
+  ['langDA','loginLangDA'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.toggle('active',l==='da'); });
+  applyTranslations();
+  if(currentUser) render();
+}
+
+function applyTranslations(){
+  const tx=I18N[lang];
+  document.getElementById('calTitle').textContent=tx.calTitle;
+  document.getElementById('addBtnLabel').textContent=tx.addBtn;
+  document.getElementById('settingsBtnLabel').textContent=tx.settingsBtn;
+  document.getElementById('closeModal').textContent=tx.close;
+  document.getElementById('addModalTitle').textContent=tx.addTitle;
+  document.getElementById('cancelAdd').textContent=tx.cancel;
+  document.getElementById('confirmAdd').textContent=tx.addConfirm;
+  document.getElementById('backLabel').textContent=tx.back;
+  // weekdays
+  const wds=['mon','tue','wed','thu','fri','sat','sun'];
+  document.querySelectorAll('#weekdaysRow .weekday').forEach((el,i)=>el.textContent=tx[wds[i]]);
+  // legend i18n spans
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ if(tx[el.dataset.i18n]) el.textContent=tx[el.dataset.i18n]; });
+  // update member labels
+  MEMBERS.mum.label=tx.mum; MEMBERS.dad.label=tx.dad; MEMBERS.family.label=tx.wholeFamily;
+  // login page strings
+  const lt=document.getElementById('loginTitle'); if(lt) lt.textContent=tx.loginTitle;
+  const ls=document.getElementById('loginSub');   if(ls) ls.textContent=tx.loginSub;
+  // rebuild profile grid with updated labels
+  if(document.getElementById('pageLogin').classList.contains('active')) buildProfileGrid();
+}
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+applyMemberColours();
+applyTranslations();
+buildProfileGrid();
+// Start on login page (already active by default)
+</script>
+
+</body>
+</html>
